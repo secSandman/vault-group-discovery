@@ -9,10 +9,11 @@ def get_namespaces(target, headers):
     """
     List all namespaces.
     Assumes the API returns JSON like: {"data": {"keys": ["namespace1", "namespace2", ...]}}
+    Uses the HTTP LIST method.
     """
     url = f"{target}/v1/sys/namespaces"
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.request("LIST", url, headers=headers)
         response.raise_for_status()
         data = response.json()
         namespaces = data.get('data', {}).get('keys', [])
@@ -82,7 +83,7 @@ def main():
         "X-Vault-Token": token,
     }
     
-    # Get list of namespaces
+    # Get list of namespaces using the LIST method
     namespaces = get_namespaces(target, headers)
     if not namespaces:
         print("No namespaces found or error retrieving namespaces.")

@@ -84,4 +84,48 @@ def main():
     }
     
     # Get list of namespaces using the LIST method
-    namespaces = get_namesp
+    namespaces = get_namespaces(target, headers)
+    if not namespaces:
+        print("No namespaces found or error retrieving namespaces.")
+        sys.exit(1)
+    
+    # Open CSV file for writing output
+    csv_filename = "ad_group_namespace_discovery.csv"
+    with open(csv_filename, mode='w', newline='', encoding='utf-8') as csv_file:
+        fieldnames = ["namespace", "AD group name", "group policies"]
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        # Process each namespace
+        for ns in namespaces:
+            print(f"Processing namespace: {ns}")
+            groups = get_groups_for_namespace(target, token, ns)
+            
+            # Wait 2 seconds after each namespace API query
+            time.sleep(2)
+            
+            if not groups:
+                print(f"No groups found in namespace '{ns}'.")
+                continue
+            
+            # For each group, get details and write to CSV
+            for group_id in groups:
+                group_details = get_group_details(target, token, ns, group_id)
+                if not group_details:
+                    continue
+                # Use the 'name' from the details or fallback to the group_id
+                group_name = group_details.get("name", group_id)
+                policies = group_details.get("policies", [])
+                # Convert list of policies to a comma-separated string
+                policies_str = ", ".join(policies) if isinstance(policies, list) else str(policies)
+                
+                writer.writerow({
+                    "namespace": ns,
+                    "AD group name": group_name,
+                    "group policies": policies_str
+                })
+    
+    print(f"CSV output written to {csv_filename}")
+
+if __name__ == "__main__":
+    main()

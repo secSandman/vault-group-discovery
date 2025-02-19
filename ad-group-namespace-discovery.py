@@ -8,7 +8,7 @@ import getpass
 def get_namespaces(target, headers):
     """
     List all namespaces using the LIST HTTP method.
-    Expects JSON response like:
+    Expects a JSON response like:
     {
       "data": {
          "keys": ["namespace1", "namespace2", ...]
@@ -29,10 +29,10 @@ def get_namespaces(target, headers):
 def get_groups_for_namespace(target, token, namespace):
     """
     List all access control groups for the given namespace.
-    Uses the new endpoint based on the Vault API specification for
-    listing groups by name:
-      GET /v1/identity/group/name?list=true
-    Expects JSON response like:
+    Uses the endpoint per the API specification:
+      Method: LIST
+      Path: /v1/identity/group/name
+    Expects a JSON response like:
     {
       "data": {
          "keys": ["group1", "group2", ...]
@@ -43,9 +43,9 @@ def get_groups_for_namespace(target, token, namespace):
         "X-Vault-Token": token,
         "X-Vault-Namespace": namespace,
     }
-    url = f"{target}/v1/identity/group/name?list=true"
+    url = f"{target}/v1/identity/group/name"
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.request("LIST", url, headers=headers)
         response.raise_for_status()
         data = response.json()
         groups = data.get('data', {}).get('keys', [])
@@ -54,12 +54,12 @@ def get_groups_for_namespace(target, token, namespace):
         print(f"Error fetching groups for namespace '{namespace}': {e}")
         return []
 
-def get_group_details(target, token, namespace, group_id):
+def get_group_details(target, token, namespace, group_name):
     """
-    Get the details for a specific group.
-    Uses the new endpoint for reading a group by its ID:
-      GET /v1/identity/group/id/{group_id}
-    Expects JSON structured as:
+    Get the details for a specific group by its name.
+    Uses the endpoint for reading a group by its name:
+      GET /v1/identity/group/name/{group_name}
+    Expects a JSON response like:
     {
       "data": {
          "name": "group_name",
@@ -71,7 +71,7 @@ def get_group_details(target, token, namespace, group_id):
         "X-Vault-Token": token,
         "X-Vault-Namespace": namespace
     }
-    url = f"{target}/v1/identity/group/id/{group_id}"
+    url = f"{target}/v1/identity/group/name/{group_name}"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -79,7 +79,7 @@ def get_group_details(target, token, namespace, group_id):
         group_data = data.get('data', {})
         return group_data
     except Exception as e:
-        print(f"Error fetching details for group '{group_id}' in namespace '{namespace}': {e}")
+        print(f"Error fetching details for group '{group_name}' in namespace '{namespace}': {e}")
         return {}
 
 def main():
@@ -89,7 +89,7 @@ def main():
     
     target = sys.argv[1].rstrip('/')  # Remove any trailing slash
 
-    # Prompt securely for the Vault token
+    # Prompt securely for the Vault token (input is masked)
     token = getpass.getpass(prompt="Enter Vault Token: ")
 
     # Global headers for calls that don't require a namespace header
@@ -123,19 +123,19 @@ def main():
                 continue
             
             # For each group, get details and write to CSV
-            for group_id in groups:
-                group_details = get_group_details(target, token, ns, group_id)
+            for group_name in groups:
+                group_details = get_group_details(target, token, ns, group_name)
                 if not group_details:
                     continue
-                # Use the 'name' from the details or fallback to the group_id
-                group_name = group_details.get("name", group_id)
+                # Use the 'name' from the details or fallback to the group name from the listing
+                group_display_name = group_details.get("name", group_name)
                 policies = group_details.get("policies", [])
                 # Convert list of policies to a comma-separated string
                 policies_str = ", ".join(policies) if isinstance(policies, list) else str(policies)
                 
                 writer.writerow({
                     "namespace": ns,
-                    "AD group name": group_name,
+                    "AD group name": group_display_name,
                     "group policies": policies_str
                 })
     

@@ -23,17 +23,18 @@ def get_namespaces(target, headers):
 
 def get_groups_for_namespace(target, token, namespace):
     """
-    List all access control groups for the given namespace using the LIST HTTP method.
+    List all access control groups for the given namespace.
+    Uses GET with an HTTP method override header to simulate a LIST request.
     Expects JSON response like: {"data": {"keys": ["group1", "group2", ...]}}
     """
     headers = {
         "X-Vault-Token": token,
-        "X-Vault-Namespace": namespace
+        "X-Vault-Namespace": namespace,
+        "X-HTTP-Method-Override": "LIST",  # Override GET to act as LIST
     }
     url = f"{target}/v1/identity/group?list=true"
     try:
-        # Use LIST method instead of GET
-        response = requests.request("LIST", url, headers=headers)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
         groups = data.get('data', {}).get('keys', [])

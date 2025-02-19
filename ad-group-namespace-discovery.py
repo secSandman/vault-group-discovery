@@ -8,7 +8,12 @@ import getpass
 def get_namespaces(target, headers):
     """
     List all namespaces using the LIST HTTP method.
-    Expects JSON response like: {"data": {"keys": ["namespace1", "namespace2", ...]}}
+    Expects JSON response like:
+    {
+      "data": {
+         "keys": ["namespace1", "namespace2", ...]
+      }
+    }
     """
     url = f"{target}/v1/sys/namespaces"
     try:
@@ -24,15 +29,21 @@ def get_namespaces(target, headers):
 def get_groups_for_namespace(target, token, namespace):
     """
     List all access control groups for the given namespace.
-    Uses GET with an HTTP method override header to simulate a LIST request.
-    Expects JSON response like: {"data": {"keys": ["group1", "group2", ...]}}
+    Uses the new endpoint based on the Vault API specification for
+    listing groups by name:
+      GET /v1/identity/group/name?list=true
+    Expects JSON response like:
+    {
+      "data": {
+         "keys": ["group1", "group2", ...]
+      }
+    }
     """
     headers = {
         "X-Vault-Token": token,
         "X-Vault-Namespace": namespace,
-        "X-HTTP-Method-Override": "LIST",  # Override GET to act as LIST
     }
-    url = f"{target}/v1/identity/group?list=true"
+    url = f"{target}/v1/identity/group/name?list=true"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -46,6 +57,8 @@ def get_groups_for_namespace(target, token, namespace):
 def get_group_details(target, token, namespace, group_id):
     """
     Get the details for a specific group.
+    Uses the new endpoint for reading a group by its ID:
+      GET /v1/identity/group/id/{group_id}
     Expects JSON structured as:
     {
       "data": {
@@ -58,7 +71,7 @@ def get_group_details(target, token, namespace, group_id):
         "X-Vault-Token": token,
         "X-Vault-Namespace": namespace
     }
-    url = f"{target}/v1/identity/group/{group_id}"
+    url = f"{target}/v1/identity/group/id/{group_id}"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
